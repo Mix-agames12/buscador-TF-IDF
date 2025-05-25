@@ -22,7 +22,7 @@ Sistema de recuperación de información inteligente basado en el algoritmo TF-I
 ### 🎯 Funcionalidades Principales
 
 - **Búsqueda Inteligente**: Algoritmo TF-IDF para ranking de relevancia
-- **Soporte Multi-formato**: Compatible con PDF, DOCX y TXT
+- **Soporte Multi-formato**: Compatible con DOCX y TXT
 - **Interfaz Moderna**: Diseño responsivo con efectos visuales
 - **Análisis Detallado**: Conteo de coincidencias por documento
 - **Descarga Directa**: Acceso inmediato a documentos desde los resultados
@@ -220,7 +220,7 @@ app.run(debug=True)
 
 ## 👨‍💻 Autores
 
-- **[Anthony Guerra](https://github.com/tu-usuario)**
+- **[Anthony Guerra](https://github.com/Mix_agames12)**
 - **[Sebastian Guerrero](https://github.com/Alejandro512)** 
 
 
