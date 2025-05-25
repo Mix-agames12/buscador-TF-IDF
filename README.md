@@ -4,7 +4,7 @@ Sistema de recuperación de información inteligente basado en el algoritmo TF-I
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-2.3.3-green.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License](https://img.shields.io/badge/License-GPL3.0-yellow.svg)
 
 ## 📋 Tabla de Contenidos
 
