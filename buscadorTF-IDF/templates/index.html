@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscador TF-IDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      padding: 40px;
+      text-align: center;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .search-section {
+      padding: 40px;
+      background: white;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    #searchInput {
+      flex: 1;
+      padding: 15px 20px;
+      border: 2px solid #e1e5e9;
+      border-radius: 50px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    #searchInput:focus {
+      border-color: #4facfe;
+      box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .search-btn {
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .search-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+    }
+
+    .search-btn:active {
+      transform: translateY(0);
+    }
+
+    .search-info {
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
+    .results-section {
+      padding: 0 40px 40px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      border-radius: 15px;
+    }
+
+    .results-header h2 {
+      color: #333;
+      font-size: 1.5rem;
+    }
+
+    .search-time {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      border-left: 4px solid #4facfe;
+    }
+
+    .result-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .result-title {
+      color: #4facfe;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: color 0.3s ease;
+    }
+
+    .result-title:hover {
+      color: #00f2fe;
+      text-decoration: underline;
+    }
+
+    .result-stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 15px;
+    }
+
+    .stat-item {
+      background: #f8f9fa;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .stat-relevance {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      color: #333;
+    }
+
+    .stat-count {
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      color: #333;
+    }
+
+    .result-preview {
+      color: #666;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .chart-container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      margin-top: 30px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-title {
+      text-align: center;
+      color: #333;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #4facfe;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+
+    .no-results h3 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    @media (max-width: 768px) {
+      .search-form {
+        flex-direction: column;
+      }
+
+      .results-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Buscador TF-IDF</h1>
+      <p>Sistema de recuperación de información inteligente</p>
+    </div>
+
+    <div class="search-section">
+      <form class="search-form" action="/search" method="get" id="searchForm">
+        <input type="text" id="searchInput" name="q" placeholder="Escribe tu consulta aquí..." value="{{ query or '' }}"
+          autocomplete="off" />
+        <button type="submit" class="search-btn">Buscar</button>
+      </form>
+
+      {% if search_time %}
+      <div class="search-info">
+        Búsqueda completada en <strong>{{ search_time }} ms</strong>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Procesando búsqueda...</p>
+    </div>
+
+    {% if results %}
+    <div class="results-section">
+      <div class="results-header">
+        <h2>📊 Resultados para: "{{ query }}"</h2>
+        <div class="search-time">{{ results|length }} documento(s) encontrado(s)</div>
+      </div>
+
+      <div class="results-grid">
+        {% for result in results %}
+        <div class="result-card">
+          <a href="/open_document/{{ result.filename }}" class="result-title" target="_blank">
+            📄 {{ result.filename }}
+          </a>
+
+          <div class="result-stats">
+            <div class="stat-item stat-relevance">
+              Relevancia: {{ result.score }}
+            </div>
+            <div class="stat-item stat-count">
+              Coincidencias: {{ result.word_count }}
+            </div>
+          </div>
+
+          <div class="result-preview">
+            {{ result.content }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- <div class="chart-container">
+        <h3 class="chart-title">📈 Comparativa de Relevancia por Documento</h3>
+        <canvas id="relevanceChart" width="400" height="200"></canvas>
+      </div> -->
+    </div>
+
+    <!-- <script>
+      // Datos para el gráfico
+      const searchResults = { results, tojson, safe };
+      const results = searchResults.results;
+
+      if (results && results.length > 0) {
+        const ctx = document.getElementById('relevanceChart').getContext('2d');
+
+        const labels = results.map(r => r.filename.length > 20 ?
+          r.filename.substring(0, 20) + '...' : r.filename);
+        const scores = results.map(r => r.score);
+        const counts = results.map(r => r.word_count);
+
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Relevancia TF-IDF',
+              data: scores,
+              backgroundColor: 'rgba(79, 172, 254, 0.7)',
+              borderColor: 'rgba(79, 172, 254, 1)',
+              borderWidth: 2,
+              borderRadius: 8,
+              yAxisID: 'y'
+            }, {
+              label: 'Coincidencias',
+              data: counts,
+              backgroundColor: 'rgba(252, 182, 159, 0.7)',
+              borderColor: 'rgba(252, 182, 159, 1)',
+              borderWidth: 2,
+              borderRadius: 8,
+              yAxisID: 'y1'
+            }]
+          },
+          options: {
+            responsive: true,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: true,
+                  text: 'Documentos'
+                }
+              },
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                  display: true,
+                  text: 'Relevancia TF-IDF'
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                  display: true,
+                  text: 'Número de Coincidencias'
+                },
+                grid: {
+                  drawOnChartArea: false,
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: 'white',
+                bodyColor: 'white',
+                borderColor: 'rgba(79, 172, 254, 1)',
+                borderWidth: 1
+              }
+            }
+          }
+        });
+      }
+    </script> -->
+    {% elif query %}
+    <div class="results-section">
+      <div class="no-results">
+        <h3>😔 No se encontraron resultados</h3>
+        <p>Intenta con otros términos de búsqueda</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    // Efectos de feedback
+    const form = document.getElementById('searchForm');
+    const input = document.getElementById('searchInput');
+    const loading = document.getElementById('loading');
+
+    form.addEventListener('submit', function (e) {
+      if (input.value.trim() === '') {
+        e.preventDefault();
+        input.focus();
+        input.style.borderColor = '#ff6b6b';
+        setTimeout(() => {
+          input.style.borderColor = '#e1e5e9';
+        }, 2000);
+        return;
+      }
+
+      loading.style.display = 'block';
+    });
+
+    // Efecto de typing en el placeholder
+    const placeholder = "Escribe tu consulta aquí...";
+    let i = 0;
+
+    function typeEffect() {
+      if (input.value === '' && i < placeholder.length) {
+        input.placeholder = placeholder.substring(0, i + 1);
+        i++;
+        setTimeout(typeEffect, 100);
+      } else if (input.value === '' && i >= placeholder.length) {
+        setTimeout(() => {
+          i = 0;
+          input.placeholder = '';
+          typeEffect();
+        }, 2000);
+      }
+    }
+
+    // Iniciar efecto cuando la página carga
+    window.addEventListener('load', typeEffect);
+
+    // Animación suave para las tarjetas
+    const cards = document.querySelectorAll('.result-card');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        card.style.transition = 'all 0.5s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, index * 100);
+    });
+  </script>
+</body>
+
+</html>
