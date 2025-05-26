@@ -1,10 +1,8 @@
-Flask==2.3.3
-scikit-learn==1.3.0
-nltk==3.8.1
-python-docx==0.8.11
-PyPDF2==3.0.1
-Werkzeug==2.3.7
-
-# Para instalar
-# pip install -r requirements.txt
-# desde el ambiente o ruta que se este usando
+# Dependencias necesarias para el funcionanmento del proyecto
+# USAR : pip install -r requerimientos.txt
+Flask
+scikit-learn
+nltk
+python-docx
+PyPDF2
+Werkzeug
