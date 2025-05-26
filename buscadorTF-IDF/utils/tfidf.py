@@ -1,16 +1,18 @@
 import os
 import re
+import unicodedata
 from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.corpus import stopwords
 from docx import Document
 import PyPDF2
-import unicodedata
+from multiprocessing import Pool, cpu_count
+import nltk
+from nltk.corpus import stopwords
 
-# Asegurar que las stopwords estén disponibles
+# Descargar stopwords si no están disponibles
 try:
     stop_words = set(stopwords.words('spanish'))
 except LookupError:
-    import nltk
+    print("Descargando stopwords de NLTK...")
     nltk.download('stopwords')
     stop_words = set(stopwords.words('spanish'))
 
@@ -22,12 +24,12 @@ def normalize(texto: str) -> str:
     return sin_tildes.lower()
 
 def read_docx(path):
-    # Función para leer archivos .docx
+    """Función para leer archivos .docx"""
     doc = Document(path)
     return "\n".join([p.text for p in doc.paragraphs])
 
 def read_pdf(path):
-    # Función para leer archivos PDF
+    """Función para leer archivos PDF"""
     with open(path, "rb") as f:
         lector = PyPDF2.PdfReader(f)
         texto = ""
@@ -35,49 +37,50 @@ def read_pdf(path):
             texto += página.extract_text() or ""
         return normalize(texto)
 
+def process_single_file(file, directory):
+    if file.startswith('~$') or file.startswith('.'):
+        return None
+
+    path = os.path.join(directory, file)
+    text = ""
+
+    try:
+        if file.lower().endswith('.docx'):
+            text = read_docx(path)
+        elif file.lower().endswith('.txt'):
+            with open(path, 'r', encoding='utf-8') as f:
+                text = f.read()
+        elif file.lower().endswith('.pdf'):
+            text = read_pdf(path)
+        else:
+            return None
+    except Exception as e:
+        print(f"Error procesando {file}: {e}")
+        return None
+
+    original_text = text
+    tokens = re.findall(r"\w+", text.lower())
+    tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
+    processed_text = " ".join(tokens)
+
+    if not processed_text.strip():
+        return None
+
+    return {
+        'filename': file,
+        'content': processed_text,
+        'original_content': original_text
+    }
+
 def preprocess_documents(directory):
-    # Preprocesamiento de documentos y cálculo de la matriz TF-IDF
     files = os.listdir(directory)
-    corpus = []
-    documents = []
+    file_paths = [(file, directory) for file in files]
 
-    for file in files:
-        # Omitir archivos temporales de Word y nombres ocultos
-        if file.startswith('~$') or file.startswith('.'):
-            continue
-            
-        path = os.path.join(directory, file)
-        text = ""
-        
-        # Leer contenido según extensión
-        try:
-            if file.lower().endswith('.docx'):
-                text = read_docx(path)
-            elif file.lower().endswith('.txt'):
-                with open(path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-            elif file.lower().endswith('.pdf'):
-                text = read_pdf(path)
-            else:
-                continue
-        except Exception as e:
-            print(f"Error procesando {file}: {e}")
-            continue
+    # Usar map secuencial para compatibilidad con Flask/Windows
+    results = [process_single_file(file, directory) for file in files]
 
-        # Tokenización simple con regex
-        original_text = text  # Guardar texto original para conteo
-        tokens = re.findall(r"\w+", text.lower())
-        tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
-        processed_text = " ".join(tokens)
-
-        # Solo incluir documentos con contenido relevante
-        if processed_text.strip():
-            documents.append({
-                'filename': file, 
-                'content': processed_text,
-                'original_content': original_text
-            })
-            corpus.append(processed_text)
+    documents = [r for r in results if r is not None]
+    corpus = [d['content'] for d in documents]
 
     if not corpus:
         return [], None, []
@@ -87,13 +90,12 @@ def preprocess_documents(directory):
     return documents, tfidf_matrix, vectorizer.get_feature_names_out()
 
 def search_query(query, documents, tfidf_matrix, feature_names):
-    # Búsqueda de consulta y ranking por similitud coseno
+    """Búsqueda de consulta y ranking por similitud coseno"""
     if not documents or tfidf_matrix is None:
         return []
-        
+
     from sklearn.metrics.pairwise import cosine_similarity
 
-    # Procesar la consulta
     tokens = re.findall(r"\w+", query.lower())
     tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
     query_str = " ".join(tokens)
@@ -101,44 +103,28 @@ def search_query(query, documents, tfidf_matrix, feature_names):
     if not query_str:
         return []
 
-    # Vectorizar con el vocabulario existente
     vectorizer = TfidfVectorizer(vocabulary=feature_names)
     query_vec = vectorizer.fit_transform([query_str])
-
-    # Calcular similitud y ordenar resultados
     scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
     ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
 
-    # Devolver solo resultados con puntuación positiva
     return [
         {
-            'filename': doc['filename'], 
+            'filename': doc['filename'],
             'score': round(score, 4),
             'content': doc['content'],
             'original_content': doc.get('original_content', doc['content'])
-        } 
+        }
         for doc, score in ranked if score > 0
     ]
 
 def get_word_count_in_document(query, document_content):
-    # Cuenta cuántas veces aparece una palabra o frase en un documento
+    """Cuenta cuántas veces aparece una palabra o frase en un documento"""
     query_lower = query.lower()
     content_lower = document_content.lower()
-    
-    # Contar coincidencias exactas de la frase completa
     phrase_count = content_lower.count(query_lower)
-    
-    # Contar palabras individuales
+
     words = re.findall(r'\b\w+\b', query_lower)
-    word_counts = {}
-    
-    for word in words:
-        if len(word) > 2:  # Ignorar palabras muy cortas
-            word_counts[word] = content_lower.count(word)
-    
-    # Si hay coincidencia exacta de frase, usar esa
-    if phrase_count > 0:
-        return phrase_count
-    
-    # Si no, usar la suma de palabras individuales
-    return sum(word_counts.values()) if word_counts else 0
+    word_counts = {word: content_lower.count(word) for word in words if len(word) > 2}
+
+    return phrase_count if phrase_count > 0 else sum(word_counts.values())
