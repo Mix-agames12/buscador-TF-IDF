@@ -1,4 +1,4 @@
-# 🔍 Buscador TF-IDF Avanzado
+# 🔍 Buscador TF-IDF
 
 Sistema de recuperación de información inteligente basado en el algoritmo TF-IDF (Term Frequency-Inverse Document Frequency) con interfaz web y visualizaciones interactivas.
 
